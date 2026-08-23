@@ -3,144 +3,269 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>No-Scroll Shopping List</title>
+    <title>Shopping Registry Pro</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;800&family=Outfit:wght@300;400;500;600;700;800&display=swap');
         
-        body { 
-            font-family: 'Inter', sans-serif; 
-            background-color: #f9fafb; 
-            color: #111827;
-            overflow-x: hidden; /* Prevent horizontal swipe */
+        * {
+            box-sizing: border-box;
         }
 
-        /* Essential for Text Wrapping */
-        textarea {
-            resize: none;
-            overflow: hidden;
-            min-height: 40px;
-            line-height: 1.4;
+        body { 
+            font-family: 'Outfit', sans-serif; 
+            background: #090d16;
+            min-height: 100vh;
+            color: #f1f5f9;
+            overflow-x: hidden;
+        }
+
+        /* Font Utilities */
+        .font-mono-num {
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        /* Ambient Glow Backgrounds */
+        .ambient-glow {
+            position: fixed;
+            width: 600px;
+            height: 600px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(16, 185, 129, 0.12) 0%, rgba(59, 130, 246, 0.05) 50%, rgba(0, 0, 0, 0) 70%);
+            top: -150px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        /* Glassmorphism Styling */
+        .glass-card {
+            background: rgba(15, 23, 42, 0.75);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 30px 60px -12px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+        }
+
+        .glass-pill {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        /* Dynamic Inputs */
+        .auto-expand {
             width: 100%;
             background: transparent;
             border: none;
-            font-size: 0.9rem !important;
-            padding: 8px 4px !important;
+            outline: none;
+            resize: none;
+            overflow: hidden;
+            line-height: 1.5;
+            font-size: 0.95rem;
+            word-break: break-word;
+            white-space: pre-wrap;
+            transition: all 0.2s ease;
+            color: #f8fafc;
+            padding: 6px 0;
+            display: block;
         }
 
-        textarea:focus {
-            outline: none;
-            border-bottom: 1px solid #e5e7eb;
+        .price-container {
+            width: 100%;
+            display: flex;
+            justify-content: flex-end;
+            align-items: flex-start;
         }
 
         .price-input {
-            font-size: 0.9rem !important;
-            width: 100px;
+            width: 100%;
             text-align: right;
             font-weight: 600;
             background: transparent;
             border: none;
             outline: none;
+            font-size: 0.95rem;
+            resize: none;
+            overflow: hidden;
+            word-break: break-all;
+            white-space: pre-wrap;
+            color: #34d399;
+            font-family: 'JetBrains Mono', monospace;
+            line-height: 1.5;
+            padding: 6px 0;
+            display: block;
         }
 
-        #capture-area {
-            background: white;
+        /* Static Display Divs for Canvas Capture */
+        .export-div-name {
             width: 100%;
-            max-width: 100%;
+            color: #f8fafc;
+            font-size: 0.95rem;
+            line-height: 1.5;
+            word-break: break-word;
+            white-space: pre-wrap;
+            padding: 6px 0;
         }
 
-        /* Fixed column ratios to prevent pushing price off screen */
-        .col-no { width: 35px; }
-        .col-item { width: auto; }
-        .col-price { width: 110px; }
-
-        table {
-            table-layout: fixed;
+        .export-div-price {
             width: 100%;
+            text-align: right;
+            font-weight: 600;
+            color: #34d399;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.95rem;
+            line-height: 1.5;
+            word-break: break-all;
+            white-space: pre-wrap;
+            padding: 6px 0;
+        }
+
+        /* Continuous Multi-Line Grand Total */
+        .grand-total-container {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+        }
+
+        .grand-total-val {
+            width: 100%;
+            text-align: right;
+            word-break: break-all;
+            white-space: normal;
+            line-height: 1.2;
+            display: block;
+        }
+
+        /* Smooth Row Animation */
+        .row-anim {
+            animation: slideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
         }
 
         .exporting .empty-row {
             display: none !important;
         }
 
-        /* Custom scrollbar for desktop */
+        /* Modern Custom Scrollbar */
         ::-webkit-scrollbar { width: 6px; }
-        ::-webkit-scrollbar-thumb { background: #e5e7eb; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.15); border-radius: 99px; }
     </style>
 </head>
-<body class="p-2 md:p-8">
+<body class="p-3 sm:p-6 lg:p-10 flex flex-col items-center justify-start relative">
 
-    <div class="max-w-3xl mx-auto">
+    <div class="ambient-glow"></div>
+
+    <div class="w-full max-w-4xl space-y-6 relative z-10">
         
-        <!-- The Capture Area -->
-        <div id="capture-area" class="shadow-sm border border-slate-200 rounded-xl overflow-hidden">
-            
-            <!-- Header -->
-            <div class="p-6 border-b border-slate-100 flex justify-between items-start">
-                <div>
-                    <h1 class="text-lg font-bold text-slate-900 tracking-tight">Shopping Registry</h1>
-                    <p id="live-date" class="text-[10px] text-slate-400 mt-0.5 uppercase tracking-widest font-bold"></p>
+        <!-- Navbar / Header Controls -->
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 px-2">
+            <div class="flex items-center gap-3">
+                <div class="h-10 w-10 rounded-xl bg-gradient-to-br from-emerald-400 to-teal-600 flex items-center justify-center shadow-lg shadow-emerald-500/20 font-black text-slate-950 text-xl tracking-tighter">
+                    R
                 </div>
-                <div class="text-right">
-                    <div id="live-time" class="text-lg font-medium text-indigo-600 font-mono"></div>
-                    <div class="text-[9px] uppercase tracking-tighter text-slate-300">IST Kolkata</div>
+                <div>
+                    <h1 class="text-xl font-bold tracking-tight text-white flex items-center gap-2">
+                        Registry<span class="text-xs px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-mono font-medium">PRO</span>
+                    </h1>
+                    <p class="text-xs text-slate-400 font-medium">Fluid Shopping Calculator</p>
                 </div>
             </div>
 
-            <!-- Table -->
-            <div class="px-4 pb-6 bg-white">
-                <table>
+            <div class="flex items-center gap-2 self-end sm:self-auto">
+                <button onclick="resetList()" class="px-4 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 border border-transparent hover:border-rose-500/20 transition-all duration-200">
+                    Reset List
+                </button>
+                <button onclick="downloadAsImage()" class="px-5 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-slate-950 rounded-xl text-xs font-bold uppercase tracking-wider shadow-lg shadow-emerald-500/20 active:scale-95 transition-all duration-200 flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 stroke-[2.5]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                    </svg>
+                    Export Receipt
+                </button>
+            </div>
+        </div>
+
+        <!-- Main Card Container -->
+        <div id="capture-area" class="glass-card rounded-3xl overflow-hidden border border-white/10 relative">
+            
+            <!-- Receipt Header -->
+            <div class="p-6 sm:p-8 border-b border-white/5 flex flex-wrap justify-between items-end gap-4 bg-white/[0.01]">
+                <div>
+                    <div class="text-[10px] uppercase tracking-widest text-emerald-400 font-bold mb-1">Official Entry</div>
+                    <h2 class="text-2xl font-extrabold tracking-tight text-white">Shopping Ledger</h2>
+                    <p id="live-date" class="text-xs text-slate-400 font-medium mt-1"></p>
+                </div>
+                <div class="text-right">
+                    <div id="live-time" class="text-2xl font-extrabold text-emerald-400 font-mono-num tracking-tight"></div>
+                    <div class="text-[10px] uppercase tracking-widest text-slate-500 font-semibold mt-0.5">IST Kolkata</div>
+                </div>
+            </div>
+
+            <!-- Itemized Table -->
+            <div class="p-4 sm:p-8">
+                <table class="w-full table-fixed">
                     <thead>
-                        <tr class="text-slate-400 text-[9px] uppercase tracking-[0.15em] font-black border-b border-slate-50">
-                            <th class="py-3 col-no text-center">#</th>
-                            <th class="py-3 px-2 col-item text-left">Item Details</th>
-                            <th class="py-3 col-price text-right">Price (₹)</th>
+                        <tr class="text-slate-400 text-[10px] uppercase tracking-widest font-bold border-b border-white/10">
+                            <th class="pb-3 w-10 text-center">#</th>
+                            <th class="pb-3 px-3 text-left">Item Description</th>
+                            <th class="pb-3 w-32 sm:w-44 text-right">Amount (₹)</th>
                         </tr>
                     </thead>
-                    <tbody id="list-body">
-                        <!-- Dynamic Rows -->
+                    <tbody id="list-body" class="divide-y divide-white/5">
+                        <!-- Dynamic Rows Injection -->
                     </tbody>
                 </table>
 
-                <!-- Summary Area -->
-                <div class="mt-6 pt-6 border-t border-slate-100 flex justify-between items-center px-2">
-                    <div class="text-[9px] font-bold uppercase tracking-widest text-slate-300">Net Total</div>
-                    <div class="text-right">
-                        <span class="text-2xl font-bold text-slate-900">₹<span id="grand-total">0.00</span></span>
+                <!-- Grand Total Display (Unconstrained Multiline Flow) -->
+                <div class="mt-8 pt-6 border-t border-white/10 flex flex-col items-start gap-3 px-2">
+                    <div class="flex items-center gap-2">
+                        <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                        <span class="text-xs font-bold uppercase tracking-widest text-slate-400">Total Payable</span>
+                    </div>
+                    <div class="grand-total-container">
+                        <span class="text-3xl sm:text-4xl font-extrabold tracking-tight text-emerald-300 font-mono-num grand-total-val">
+                            ₹<span id="grand-total">0.00</span>
+                        </span>
                     </div>
                 </div>
             </div>
 
-            <!-- Footer Timestamp -->
-            <div class="bg-slate-50 px-6 py-3 text-[8px] text-slate-400 font-bold uppercase tracking-[0.2em] flex justify-between border-t border-slate-100">
+            <!-- Footer Bar -->
+            <div class="bg-black/40 px-8 py-4 text-[10px] text-slate-500 font-semibold uppercase tracking-widest flex justify-between items-center border-t border-white/5">
                 <span id="footer-timestamp"></span>
-                <span>Automated Log</span>
+                <span class="flex items-center gap-1.5">
+                    <span class="w-1.5 h-1.5 rounded-full bg-slate-600"></span>
+                    Verified Auto-Log
+                </span>
             </div>
         </div>
 
-        <!-- Utility Controls -->
-        <div class="mt-6 flex items-center justify-between px-2">
-            <button onclick="downloadAsImage()" class="px-6 py-3 bg-slate-900 text-white rounded-lg text-[10px] font-bold uppercase tracking-widest hover:bg-indigo-600 transition-all shadow-md flex items-center gap-2">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                </svg>
-                Save Image
-            </button>
-            <button onclick="resetList()" class="text-[9px] font-bold uppercase tracking-widest text-slate-300 hover:text-red-500 transition-colors">
-                Clear
-            </button>
+        <!-- Formula Guide Helper -->
+        <div class="glass-pill rounded-2xl p-4 text-center text-xs text-slate-400 font-medium tracking-wide flex flex-wrap items-center justify-center gap-2">
+            <span>Inline Formula Input:</span>
+            <code class="text-emerald-400 font-mono bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/20">cal 56g 56 100g</code>
+            <span>or</span>
+            <code class="text-emerald-400 font-mono bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/20">cal 56g 56 250</code>
         </div>
     </div>
 
-    <div id="toast" class="fixed bottom-6 left-1/2 -translate-x-1/2 bg-indigo-600 text-white px-6 py-2 rounded-full text-[10px] font-bold uppercase tracking-widest opacity-0 transition-opacity duration-300 shadow-xl pointer-events-none">
-        Saved to Device
+    <!-- Toast Notification -->
+    <div id="toast" class="fixed bottom-6 left-1/2 -translate-x-1/2 bg-emerald-500 text-slate-950 px-6 py-2.5 rounded-full text-xs font-bold uppercase tracking-widest opacity-0 transition-all duration-300 shadow-2xl shadow-emerald-500/30 pointer-events-none translate-y-2 z-50">
+        Snapshot Exported
     </div>
 
     <script>
         const listBody = document.getElementById('list-body');
         const grandTotalDisplay = document.getElementById('grand-total');
         let rowCount = 0;
+        
+        const rowData = {};
 
         function updateClock() {
             const now = new Date();
@@ -156,84 +281,247 @@
 
         function createNewRow() {
             rowCount++;
+            const id = rowCount;
+            rowData[id] = { formula: '', displayVal: '', rawStr: '0' };
+
             const row = document.createElement('tr');
-            row.className = "empty-row border-b border-slate-50"; 
-            row.id = `row-${rowCount}`;
+            row.className = "empty-row row-anim border-b border-white/5 hover:bg-white/[0.02] transition-colors"; 
+            row.id = `row-${id}`;
             
             row.innerHTML = `
-                <td class="col-no text-center text-slate-300 font-mono text-[10px] py-2">${rowCount}</td>
-                <td class="px-2 col-item py-2">
-                    <textarea id="name-${rowCount}" 
+                <td class="text-center text-slate-600 font-mono-num text-xs py-3.5 align-top font-semibold">${id}</td>
+                <td class="px-3 py-2 align-top">
+                    <textarea id="name-${id}" 
                               rows="1"
-                              oninput="handleTextarea(this, ${rowCount})"
-                              placeholder="Describe item..."></textarea>
+                              class="auto-expand placeholder-slate-600 font-medium"
+                              oninput="handleTextarea(this, ${id})"
+                              placeholder="Add item details..."></textarea>
                 </td>
-                <td class="col-price text-right py-2">
-                    <input type="number" 
-                           step="0.01" 
-                           placeholder="0.00" 
-                           oninput="handlePriceInput(this, ${rowCount})" 
-                           class="price-input">
+                <td class="py-2 align-top text-right">
+                    <div class="price-container">
+                        <textarea id="price-${id}" 
+                                  rows="1"
+                                  placeholder="0.00" 
+                                  oninput="handlePriceInput(this, ${id})" 
+                                  onfocus="handlePriceFocus(this, ${id})"
+                                  onblur="handlePriceBlur(this, ${id})"
+                                  class="price-input placeholder-slate-700"></textarea>
+                    </div>
                 </td>
             `;
             listBody.appendChild(row);
         }
 
         function handleTextarea(el, id) {
-            // Auto-expand height
             el.style.height = "auto";
-            el.style.height = (el.scrollHeight) + "px";
+            el.style.height = el.scrollHeight + "px";
 
             const val = el.value.toLowerCase();
             if (val === "c ") el.value = "Chicken ";
             if (val === "m ") el.value = "Mutton ";
         }
 
-        function handlePriceInput(input, id) {
+        function parseAndCalculatePrice(inputStr) {
+            const cleanStr = inputStr.trim();
+            if (!cleanStr.toLowerCase().startsWith('cal ')) {
+                const digitsOnly = cleanStr.replace(/[^0-9.]/g, '');
+                return {
+                    formula: inputStr,
+                    displayVal: inputStr,
+                    rawStr: digitsOnly || '0'
+                };
+            }
+
+            const parts = cleanStr.split(/\s+/);
+            if (parts.length === 4) {
+                const match1 = parts[1].match(/^([\d.]+)\s*([a-zA-Z]*)$/);
+                const r1 = parseFloat(parts[2]);
+
+                if (match1 && !isNaN(r1)) {
+                    const g1 = parseFloat(match1[1]);
+                    const unit = match1[2] || 'g';
+
+                    const match3 = parts[3].match(/^([\d.]+)\s*([a-zA-Z]*)$/);
+                    if (match3) {
+                        const val3 = parseFloat(match3[1]);
+                        const unit3 = match3[2];
+
+                        if (!isNaN(g1) && g1 > 0) {
+                            if (unit3 !== '') {
+                                const resultCost = (r1 / g1) * val3;
+                                const formatted = Number.isInteger(resultCost) ? resultCost.toString() : resultCost.toFixed(2);
+                                return {
+                                    formula: inputStr,
+                                    displayVal: formatted,
+                                    rawStr: formatted
+                                };
+                            } else {
+                                const resultGrams = (g1 / r1) * val3;
+                                const formatted = Number.isInteger(resultGrams) ? resultGrams.toString() : resultGrams.toFixed(2);
+                                return {
+                                    formula: inputStr,
+                                    displayVal: `${formatted}${unit}`,
+                                    rawStr: val3.toString()
+                                };
+                            }
+                        }
+                    }
+                }
+            }
+
+            return { formula: inputStr, displayVal: inputStr, rawStr: '0' };
+        }
+
+        function handlePriceInput(el, id) {
+            el.style.height = "auto";
+            el.style.height = el.scrollHeight + "px";
+
+            const result = parseAndCalculatePrice(el.value);
+            rowData[id].formula = el.value;
+            rowData[id].displayVal = result.displayVal;
+            rowData[id].rawStr = result.rawStr;
+
+            const nameVal = document.getElementById(`name-${id}`).value;
             const row = document.getElementById(`row-${id}`);
-            if (input.value !== "") row.classList.remove('empty-row');
+            if (el.value !== "" || nameVal !== "") row.classList.remove('empty-row');
             else row.classList.add('empty-row');
 
             calculateTotal();
+            checkAndAddRow(id);
+        }
+
+        function handlePriceFocus(el, id) {
+            if (rowData[id].formula) {
+                el.value = rowData[id].formula;
+                el.style.height = "auto";
+                el.style.height = el.scrollHeight + "px";
+            }
+        }
+
+        function handlePriceBlur(el, id) {
+            const result = parseAndCalculatePrice(el.value);
+            rowData[id].formula = el.value;
+            rowData[id].displayVal = result.displayVal;
+            rowData[id].rawStr = result.rawStr;
             
+            el.value = result.displayVal;
+            el.style.height = "auto";
+            el.style.height = el.scrollHeight + "px";
+            calculateTotal();
+        }
+
+        function checkAndAddRow(id) {
             const rows = listBody.querySelectorAll('tr');
             const lastRowId = parseInt(rows[rows.length - 1].id.split('-')[1]);
-            if (id === lastRowId && input.value !== "") createNewRow();
+            if (id === lastRowId) {
+                createNewRow();
+            }
+        }
+
+        // Custom Indian Number Formatter for Infinite Digits (BigInt + Decimals)
+        function formatIndianBigNumber(integerStr, decimalStr) {
+            let lastThree = integerStr.slice(-3);
+            let otherNumbers = integerStr.slice(0, -3);
+            if (otherNumbers !== '') {
+                lastThree = ',' + lastThree;
+            }
+            let formattedInt = otherNumbers.replace(/\B(?=(\d{2})+(?!\d))/g, ",") + lastThree;
+            return decimalStr !== undefined ? `${formattedInt}.${decimalStr}` : `${formattedInt}.00`;
         }
 
         function calculateTotal() {
-            const priceInputs = document.querySelectorAll('.price-input');
-            let total = 0;
-            priceInputs.forEach(input => {
-                const val = parseFloat(input.value);
-                if (!isNaN(val)) total += val;
+            let totalInt = 0n;
+            let totalDec = 0;
+
+            Object.keys(rowData).forEach(key => {
+                const str = rowData[key].rawStr || '0';
+                if (!str || str === '0') return;
+
+                const parts = str.split('.');
+                try {
+                    totalInt += BigInt(parts[0] || '0');
+                } catch (e) {}
+
+                if (parts[1]) {
+                    const decVal = parseFloat(`0.${parts[1]}`);
+                    if (!isNaN(decVal)) totalDec += decVal;
+                }
             });
-            grandTotalDisplay.textContent = total.toLocaleString('en-IN', { minimumFractionDigits: 2 });
+
+            if (totalDec >= 1) {
+                const extraInt = Math.floor(totalDec);
+                totalInt += BigInt(extraInt);
+                totalDec -= extraInt;
+            }
+
+            const decStr = totalDec.toFixed(2).split('.')[1];
+            grandTotalDisplay.textContent = formatIndianBigNumber(totalInt.toString(), decStr);
         }
 
         function downloadAsImage() {
             const area = document.getElementById('capture-area');
             const toast = document.getElementById('toast');
+
+            if (document.activeElement && document.activeElement.tagName === 'TEXTAREA') {
+                document.activeElement.blur();
+            }
+
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            const day = String(now.getDate()).padStart(2, '0');
+            const dateFileName = `${year}-${month}-${day}`;
+
+            const textareaSwaps = [];
+            const allTextareas = area.querySelectorAll('textarea');
+
+            allTextareas.forEach(ta => {
+                const parent = ta.parentNode;
+                const div = document.createElement('div');
+                div.className = ta.classList.contains('price-input') ? 'export-div-price' : 'export-div-name';
+                div.textContent = ta.value;
+
+                parent.insertBefore(div, ta);
+                ta.style.display = 'none';
+
+                textareaSwaps.push({ ta, div });
+            });
+
             area.classList.add('exporting');
-            
+
             html2canvas(area, { 
                 scale: 3,
                 useCORS: true,
-                backgroundColor: "#ffffff"
+                backgroundColor: "#090d16"
             }).then(canvas => {
                 const link = document.createElement('a');
-                link.download = `Registry_${Date.now()}.png`;
+                link.download = `Shopping_Registry_${dateFileName}.png`;
                 link.href = canvas.toDataURL("image/png");
                 link.click();
+
+                textareaSwaps.forEach(item => {
+                    item.ta.style.display = 'block';
+                    item.div.remove();
+                });
+
                 area.classList.remove('exporting');
+
                 toast.style.opacity = "1";
-                setTimeout(() => toast.style.opacity = "0", 2000);
+                toast.style.transform = "translate(-50%, 0)";
+                setTimeout(() => {
+                    toast.style.opacity = "0";
+                    toast.style.transform = "translate(-50%, 8px)";
+                }, 2500);
             });
         }
 
         function resetList() {
-            if(confirm("Clear current list?")) {
-                listBody.innerHTML = ""; rowCount = 0; createNewRow(); calculateTotal();
+            if (confirm("Reset current registry?")) {
+                listBody.innerHTML = ""; 
+                rowCount = 0; 
+                Object.keys(rowData).forEach(key => delete rowData[key]);
+                createNewRow(); 
+                calculateTotal();
             }
         }
 
