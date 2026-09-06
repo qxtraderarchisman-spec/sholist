@@ -861,7 +861,8 @@
             updateTotalsAndCount();
             if (autoSaveEnabled) autoSave();
             pushHistory();
-            manageEmptyRows();
+            // Clean up empty rows after a delay (user has stopped interacting)
+            setTimeout(manageEmptyRows, 50);
         }
 
         function clearItems() {
@@ -886,15 +887,7 @@
             updateTotalsAndCount();
             if (autoSaveEnabled) autoSave();
             pushHistory();
-            setTimeout(() => {
-                const rows = listBody.querySelectorAll('tr');
-                if (rows.length > 0) {
-                    const lastRow = rows[rows.length - 1];
-                    const nameTa = lastRow.querySelector('.auto-expand');
-                    if (nameTa) { nameTa.focus();
-                        nameTa.selectionStart = nameTa.selectionEnd = nameTa.value.length; }
-                }
-            }, 30);
+            // Do NOT focus the new row – user chooses where to move
         }
 
         // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -930,13 +923,27 @@
             const scrollY = window.scrollY;
             listBody.innerHTML = '';
 
+            let nonEmptyCounter = 0;
+            const itemCount = items.length;
+
             items.forEach((item, idx) => {
+                const isEmpty = !item.name.trim() && !item.priceFormula.trim();
                 const tr = document.createElement('tr');
                 tr.className = 'row-anim border-b border-white/5 hover:bg-white/[0.02] transition-colors';
                 tr.id = `row-${item.id}`;
 
+                // Only assign a number if non-empty, else show dash
+                let numberDisplay = '';
+                if (!isEmpty) {
+                    nonEmptyCounter++;
+                    numberDisplay = nonEmptyCounter;
+                } else {
+                    // If it's the last row and empty, we show nothing (dash)
+                    numberDisplay = idx === itemCount - 1 ? '' : '-';
+                }
+
                 tr.innerHTML = `
-                    <td class="text-center text-slate-600 font-mono-num text-xs py-3 align-top font-semibold">${idx + 1}</td>
+                    <td class="text-center text-slate-600 font-mono-num text-xs py-3 align-top font-semibold">${numberDisplay}</td>
                     <td class="px-2 py-2 align-top">
                         <textarea rows="1" class="auto-expand placeholder-slate-600 font-medium" 
                                   placeholder="Item details… (or paste JSON)" 
@@ -958,18 +965,13 @@
                 listBody.appendChild(tr);
             });
 
-            // ── Attach events (delegated to avoid re-binding) ──
-            // We'll use event delegation on the tbody
-            window.scrollTo(0, scrollY);
-
             // Auto-expand all textareas
             listBody.querySelectorAll('textarea').forEach(ta => {
                 ta.style.height = 'auto';
                 ta.style.height = ta.scrollHeight + 'px';
             });
 
-            // Manage empty rows
-            manageEmptyRows();
+            window.scrollTo(0, scrollY);
         }
 
         function escHtml(str) {
@@ -1026,23 +1028,34 @@
             const lastRow = rows[rows.length - 1];
             if (lastRow && lastRow.id === `row-${id}`) {
                 const hasContent = items.some(i => i.name.trim() || i.priceFormula.trim());
-                // Only auto-create if there's at least one item with content
                 if (hasContent) {
-                    // Check if the last item has content
                     const lastItem = items[items.length - 1];
                     if (lastItem && (lastItem.name.trim() || lastItem.priceFormula.trim())) {
-                        // Check if there's already an empty row at the end
+                        // Check if the last item is the only one and empty? Actually we want to create if the last has content.
+                        // But we need to avoid creating duplicate empty rows. We'll check if there's already an empty row at the end.
                         const lastRowIsEmpty = items.length > 0 && !items[items.length - 1].name.trim() && !items[items
-                        .length - 1].priceFormula.trim();
+                            .length - 1].priceFormula.trim();
                         if (!lastRowIsEmpty) {
-                            addNewRow();
+                            // Create a new row without moving focus
+                            createItem('', '');
+                            renderRows();
+                            updateTotalsAndCount();
+                            if (autoSaveEnabled) autoSave();
+                            pushHistory();
+                            // Keep focus on current textarea? After render, we need to restore focus.
+                            // Since we re-render, we lose focus. We'll store the active element id and re-focus.
+                            const activeId = id;
+                            setTimeout(() => {
+                                const newTa = document.querySelector(`textarea[data-id="${activeId}"]`);
+                                if (newTa) {
+                                    newTa.focus();
+                                    newTa.selectionStart = newTa.selectionEnd = newTa.value.length;
+                                }
+                            }, 10);
                         }
                     }
                 }
             }
-
-            // Manage empty trailing rows
-            manageEmptyRows();
         });
 
         listBody.addEventListener('focusout', function(e) {
@@ -1067,7 +1080,8 @@
                     pushHistory();
                 }
             }
-            manageEmptyRows();
+            // Manage empty rows on blur (after user finishes editing)
+            setTimeout(manageEmptyRows, 50);
         });
 
         listBody.addEventListener('click', function(e) {
@@ -1081,19 +1095,15 @@
         // ─── Manage empty trailing rows ───
         function manageEmptyRows() {
             if (isUpdatingFromCode) return;
-            // If there are more than 1 row, remove trailing empty rows
+            let changed = false;
+            // Remove trailing empty rows except the last one
             while (items.length > 1) {
                 const last = items[items.length - 1];
                 const prev = items[items.length - 2];
-                if (!last.name.trim() && !last.priceFormula.trim()) {
-                    // Check if previous row is also empty — if so, remove last
-                    if (!prev.name.trim() && !prev.priceFormula.trim()) {
-                        items.pop();
-                        renderRows();
-                        updateTotalsAndCount();
-                    } else {
-                        break;
-                    }
+                if (!last.name.trim() && !last.priceFormula.trim() &&
+                    !prev.name.trim() && !prev.priceFormula.trim()) {
+                    items.pop();
+                    changed = true;
                 } else {
                     break;
                 }
@@ -1101,8 +1111,13 @@
             // Ensure at least one row
             if (items.length === 0) {
                 createItem('', '');
+                changed = true;
+            }
+            if (changed) {
                 renderRows();
                 updateTotalsAndCount();
+                if (autoSaveEnabled) autoSave();
+                pushHistory();
             }
         }
 
@@ -1131,8 +1146,9 @@
             const decStr = totalDec.toFixed(2).split('.')[1];
             grandTotalEl.textContent = formatIndianNumber(totalInt.toString(), decStr);
 
-            const count = items.length;
-            itemCountEl.textContent = `${count} item${count !== 1 ? 's' : ''}`;
+            // Count non-empty items for display
+            const nonEmptyCount = items.filter(i => i.name.trim() || i.priceFormula.trim()).length;
+            itemCountEl.textContent = `${nonEmptyCount} item${nonEmptyCount !== 1 ? 's' : ''}`;
         }
 
         function formatIndianNumber(intStr, decStr) {
@@ -1162,6 +1178,10 @@
             }
             const decStr = totalDec.toFixed(2).split('.')[1];
             return formatIndianNumber(totalInt.toString(), decStr);
+        }
+
+        function getNonEmptyItems() {
+            return items.filter(i => i.name.trim() || i.priceFormula.trim());
         }
 
         // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -1222,7 +1242,8 @@
             lists.forEach(list => {
                 const opt = document.createElement('option');
                 opt.value = list.id;
-                opt.textContent = `${list.name} (${list.items?.length || 0} items)`;
+                const count = list.items ? list.items.filter(i => i.name || i.priceFormula).length : 0;
+                opt.textContent = `${list.name} (${count} items)`;
                 if (list.id == currentListId) opt.selected = true;
                 savedListsDropdown.appendChild(opt);
             });
@@ -1231,12 +1252,13 @@
         function saveCurrentList() {
             const nameInput = document.getElementById('saveListName');
             const name = nameInput.value.trim() || 'Untitled';
-            if (items.length === 0) { showToast('⚠️ No items to save'); return; }
+            const nonEmpty = getNonEmptyItems();
+            if (nonEmpty.length === 0) { showToast('⚠️ No items to save'); return; }
             const lists = getSavedLists();
             const newList = {
                 id: Date.now(),
                 name,
-                items: JSON.parse(JSON.stringify(items)),
+                items: JSON.parse(JSON.stringify(nonEmpty)),
                 autoSaveEnabled,
                 createdAt: new Date().toISOString()
             };
@@ -1282,7 +1304,6 @@
             setSavedLists(lists);
             if (currentListId == selectedId) {
                 currentListId = null;
-                // Also clear the dropdown selection
                 savedListsDropdown.value = '';
             }
             renderSavedListsDropdown();
@@ -1420,9 +1441,10 @@
 
         function exportCSV() {
             exportMenu.classList.remove('open');
-            if (items.length === 0) { showToast('No items to export'); return; }
+            const nonEmpty = getNonEmptyItems();
+            if (nonEmpty.length === 0) { showToast('No items to export'); return; }
             let csv = '#,Item,Amount (₹)\n';
-            items.forEach((item, idx) => {
+            nonEmpty.forEach((item, idx) => {
                 const cleanName = item.name.replace(/,/g, ' ').trim() || '(unnamed)';
                 csv += `${idx+1},"${cleanName}","${item.rawValue || '0'}"\n`;
             });
@@ -1437,8 +1459,9 @@
 
         function exportJSON() {
             exportMenu.classList.remove('open');
-            if (items.length === 0) { showToast('No items to export'); return; }
-            const exportData = items.map((item, idx) => ({
+            const nonEmpty = getNonEmptyItems();
+            if (nonEmpty.length === 0) { showToast('No items to export'); return; }
+            const exportData = nonEmpty.map((item, idx) => ({
                 'sl.no': idx + 1,
                 'item': item.name || 'Unnamed',
                 'cost': item.priceDisplay || '0.00'
@@ -1492,8 +1515,9 @@
             pushHistory();
             setTimeout(autoSave, 100);
             setTimeout(() => { saveDot.className = 'save-dot saved'; }, 400);
-            // Make sure dropdown shows current list
             if (currentListId) savedListsDropdown.value = currentListId;
+            // Clean up empty rows after load
+            setTimeout(manageEmptyRows, 50);
         }
 
         init();
